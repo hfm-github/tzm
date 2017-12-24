@@ -1,0 +1,80 @@
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:aop="http://www.springframework.org/schema/aop" xmlns:tx="http://www.springframework.org/schema/tx" xmlns:cache="http://www.springframework.org/schema/cache" 
+	xsi:schemaLocation="http://www.springframework.org/schema/beans
+    http://www.springframework.org/schema/beans/spring-beans-4.3.xsd 
+    http://www.springframework.org/schema/context
+    http://www.springframework.org/schema/context/spring-context-4.3.xsd
+    http://www.springframework.org/schema/aop
+    http://www.springframework.org/schema/aop/spring-aop-4.3.xsd
+    http://www.springframework.org/schema/tx
+    http://www.springframework.org/schema/tx/spring-tx-4.3.xsd
+    http://www.springframework.org/schema/cache
+    http://www.springframework.org/schema/cache/spring-cache-4.3.xsd">
+
+	<!-- 配置使用注解，仅仅配置这一项的话还是需要在XML文件中进行bean配置 -->
+	<context:annotation-config />
+	<!-- 让容器到指定包目录下寻找需要被当做组件的类 ，其中包含了context:annotation-config的功能，因此有scan时可以省略上一条 -->
+	<context:component-scan base-package="com.tzm.bean,com.tzm.dao,com.tzm.service.*,com.tzm.resource" />
+	<!-- ehcache缓存配置 -->
+	<cache:annotation-driven cache-manager="cacheManager" />
+	<bean id="cacheManager" class="org.springframework.cache.ehcache.EhCacheCacheManager">
+		<property name="cacheManager" ref="ehcache"></property>
+	</bean>
+
+	<bean id="ehcache"
+		class="org.springframework.cache.ehcache.EhCacheManagerFactoryBean">
+		<property name="configLocation" value="classpath:ehcache-context.xml"></property>
+	</bean>
+	<!-- 创建数据源***************************************************************************************** -->
+	<context:property-placeholder location="classpath*:jdbc.properties" />
+	<!-- classpath表示src目录下的properties文件 org.apache.commons.dbcp.BasicDataSource -->
+	<bean id="myDataSource" class="com.mchange.v2.c3p0.ComboPooledDataSource"
+		destroy-method="close">
+		<property name="driverClass" value="${jdbc.driverClassName}" />
+		<property name="jdbcUrl" value="${jdbc.url}" />
+		<property name="user" value="${jdbc.username}" />
+		<property name="password" value="${jdbc.password}" />
+	</bean>
+	<!-- 创建SessionFactory，并注入数据源********************************************************************* -->
+	<bean id="sessionFactory"
+		class="org.springframework.orm.hibernate4.LocalSessionFactoryBean">
+		<property name="DataSource" ref="myDataSource" />
+
+		<property name="annotatedClasses">
+			<list>
+				<value>com.tzm.bean.UserBean</value>
+			</list>
+		</property>
+
+		<property name="hibernateProperties">
+			<props>
+				<prop key="hibernate.dialect">org.hibernate.dialect.MySQLDialect</prop>
+				<prop key="hibernate.show_sql">true</prop>
+				<prop key="hibernate.format_sql">true</prop>
+			</props>
+		</property>
+
+	</bean>
+	<!-- 创建hibernateTemplate********************************************************************************** -->
+
+	<!-- 事务管理******************************************************************************************** -->
+
+	<bean id="transactionManager"
+		class="org.springframework.orm.hibernate4.HibernateTransactionManager">
+		<property name="sessionFactory" ref="sessionFactory" />
+	</bean>
+	<!-- <bean id="hibernateTemplate" class="org.springframework.orm.hibernate4.HibernateTemplate"> 
+		<property name="sessionFactory" ref="sessionFactory"></property> </bean> 
+		<tx:annotation-driven transaction-manager="transactionManager"/> <tx:annotation-driven/> 
+		<bean id="userDao" class="com.tzm.dao.UserDao"> <property name="sessionFactory" 
+		ref="sessionFactory"></property> </bean> -->
+	<tx:advice id="txAdvice" transaction-manager="transactionManager">
+		<tx:attributes>
+			<tx:method name="add*" propagation="REQUIRED" />
+			<tx:method name="delete*" propagation="REQUIRED" />
+			<tx:method name="update*" propagation="REQUIRED" />
+			<tx:method name="*" read-only="true" />
+		</tx:attributes>
+	</tx:advice>
+</beans>

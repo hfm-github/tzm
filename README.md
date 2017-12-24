@@ -1,2 +1,0 @@
-# tzm
-tianzhumanager
